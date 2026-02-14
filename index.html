@@ -17,21 +17,31 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: linear-gradient(135deg, #FFE4E1 0%, #FFC0CB 50%, #FFB6C1 100%);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             overflow: hidden;
             position: relative;
             padding: 20px;
+            /* Мягкие розовые полоски */
+            background: repeating-linear-gradient(
+                135deg,
+                #FFD6E0 0px,
+                #FFD6E0 20px,
+                #FFECF0 20px,
+                #FFECF0 40px,
+                #FFC8D6 40px,
+                #FFC8D6 60px,
+                #FFE0E8 60px,
+                #FFE0E8 80px
+            );
         }
 
         .container {
             text-align: center;
-            z-index: 10;
-            background: rgba(255, 255, 255, 0.3);
+            position: relative;
+            background: rgba(255, 240, 245, 0.85);
             padding: 40px 60px;
             border-radius: 30px;
             box-shadow: 0 10px 40px rgba(255, 105, 180, 0.3);
-            backdrop-filter: blur(10px);
             max-width: 90vw;
         }
 
@@ -80,6 +90,12 @@
             color: white;
             width: 180px;
             min-width: 180px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            z-index: 200;
         }
 
         .btn-yes:hover {
@@ -90,7 +106,34 @@
         .btn-no {
             background: linear-gradient(135deg, #FFB6C1, #FF69B4);
             color: white;
-            position: relative;
+            cursor: pointer;
+        }
+
+        .yes-heart {
+            position: fixed;
+            pointer-events: none;
+            z-index: 150;
+            animation: floatUp 1.5s ease-out forwards;
+        }
+
+        @keyframes floatUp {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1) rotate(0deg);
+            }
+            40% {
+                opacity: 0.9;
+                transform: translate(var(--dx), -40px) scale(1.1) rotate(var(--rot));
+            }
+            100% {
+                opacity: 0;
+                transform: translate(var(--dx2), -120px) scale(0.4) rotate(var(--rot2));
+            }
+        }
+
+        .btn-no.flying {
+            position: fixed;
+            z-index: 200;
         }
 
         .hearts-container {
@@ -105,40 +148,44 @@
         }
 
         .heart {
-            position: absolute;
+            position: fixed;
             font-size: 24px;
             color: #FF69B4;
             animation: fall linear forwards;
             opacity: 0.8;
+            top: -50px;
         }
 
         .trail-heart {
-            position: absolute;
-            font-size: 14px;
-            color: #FF69B4;
+            position: fixed;
             pointer-events: none;
-            z-index: 50;
-            animation: trailFade 0.8s ease-out forwards;
+            z-index: 150;
+            animation: trailFloat 1.6s ease-out forwards;
+            will-change: transform, opacity;
         }
 
-        @keyframes trailFade {
+        @keyframes trailFloat {
             0% {
                 opacity: 1;
-                transform: scale(1);
+                transform: translate(0, 0) rotate(0deg) scale(1);
+            }
+            30% {
+                opacity: 0.9;
+                transform: translate(var(--drift-x), -15px) rotate(var(--spin)) scale(1.1);
             }
             100% {
                 opacity: 0;
-                transform: scale(0.5);
+                transform: translate(var(--drift-x2), 60px) rotate(var(--spin-end)) scale(0.3);
             }
         }
 
         @keyframes fall {
             0% {
-                transform: translateY(-100px) rotate(0deg);
+                transform: translateY(0) rotate(0deg);
                 opacity: 1;
             }
             100% {
-                transform: translateY(100vh) rotate(360deg);
+                transform: translateY(110vh) rotate(360deg);
                 opacity: 0;
             }
         }
@@ -272,80 +319,135 @@
     </div>
 
     <script>
-        // Track the "Нет" button's transform state
-        let currentTransformX = 0;
-        let currentTransformY = 0;
-        // Store previous position for heart trail
         let previousBtnX = 0;
         let previousBtnY = 0;
         let isFirstMove = true;
+        let yesHeartInterval = null;
+
+        // Сердечки взлетают пока мышка над кнопкой "Да"
+        document.getElementById('yesBtn').addEventListener('mouseenter', () => {
+            yesHeartInterval = setInterval(spawnYesHeart, 120);
+        });
+        document.getElementById('yesBtn').addEventListener('mouseleave', () => {
+            clearInterval(yesHeartInterval);
+            yesHeartInterval = null;
+        });
+
+        function spawnYesHeart() {
+            const btn = document.getElementById('yesBtn');
+            const rect = btn.getBoundingClientRect();
+            const symbols = ['💕', '💗', '💖', '💓', '♥'];
+
+            const heart = document.createElement('div');
+            heart.className = 'yes-heart';
+            heart.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+            heart.style.left = (rect.left + Math.random() * rect.width) + 'px';
+            heart.style.top = (rect.top + rect.height * 0.3) + 'px';
+            heart.style.fontSize = (Math.random() * 6 + 10) + 'px';
+
+            heart.style.setProperty('--dx', (Math.random() - 0.5) * 60 + 'px');
+            heart.style.setProperty('--dx2', (Math.random() - 0.5) * 80 + 'px');
+            heart.style.setProperty('--rot', (Math.random() - 0.5) * 40 + 'deg');
+            heart.style.setProperty('--rot2', (Math.random() - 0.5) * 90 + 'deg');
+
+            document.body.appendChild(heart);
+
+            setTimeout(() => { heart.remove(); }, 1500);
+        }
 
         function runAway() {
             const btn = document.getElementById('noBtn');
-            
-            // Get current position (accounting for existing transform)
             const rect = btn.getBoundingClientRect();
             const currentX = rect.left + rect.width / 2;
             const currentY = rect.top + rect.height / 2;
-            
-            // On first move, store current as previous (no trail yet)
+
+            // При первом hover — выносим кнопку из container в body
             if (isFirstMove) {
+                // Плейсхолдер чтобы кнопка "Да" не сдвигалась
+                const placeholder = document.createElement('div');
+                placeholder.style.width = rect.width + 'px';
+                placeholder.style.height = rect.height + 'px';
+                placeholder.style.visibility = 'hidden';
+                btn.parentNode.insertBefore(placeholder, btn);
+
+                btn.style.position = 'fixed';
+                btn.style.left = rect.left + 'px';
+                btn.style.top = rect.top + 'px';
+                btn.classList.add('flying');
+                document.body.appendChild(btn);
+
                 previousBtnX = currentX;
                 previousBtnY = currentY;
                 isFirstMove = false;
             }
-            
-            // Random movement between -250 and 250 pixels
+
+            // "Испугалась" — увеличивается и уменьшается обратно
+            btn.style.transition = 'transform 0.3s ease';
+            btn.style.transform = 'scale(1.15)';
+            requestAnimationFrame(() => {
+                setTimeout(() => { btn.style.transform = 'scale(1)'; }, 150);
+            });
+
             const randomX = (Math.random() - 0.5) * 500;
             const randomY = (Math.random() - 0.5) * 500;
-            
-            // Calculate new transform values (cumulative)
-            currentTransformX += randomX;
-            currentTransformY += randomY;
-            
-            // Calculate new position for heart trail
-            const newX = currentX + randomX;
-            const newY = currentY + randomY;
-            
-            // Create heart trail from PREVIOUS position to new position
-            // This ensures hearts appear BEHIND where the button came from
+
+            const newLeft = rect.left + randomX;
+            const newTop = rect.top + randomY;
+
+            btn.style.left = newLeft + 'px';
+            btn.style.top = newTop + 'px';
+
+            const newX = newLeft + rect.width / 2;
+            const newY = newTop + rect.height / 2;
+
             createHeartTrail(previousBtnX, previousBtnY, newX, newY);
-            
-            // Update previous position to current position for next move
+
             previousBtnX = newX;
             previousBtnY = newY;
-            
-            btn.style.transform = `translate(${currentTransformX}px, ${currentTransformY}px)`;
         }
 
         function createHeartTrail(startX, startY, endX, endY) {
-            const heartsContainer = document.getElementById('heartsContainer');
-            const heartSymbols = ['💕', '💗'];
-            const numHearts = 8;
-            
-            // Calculate direction vector
+            const heartSymbols = ['💕', '💗', '💖', '💓', '🩷', '♥'];
+            const numHearts = 10;
+
             const dx = endX - startX;
             const dy = endY - startY;
-            
+
             for (let i = 0; i < numHearts; i++) {
-                // Linear interpolation along the path
                 const progress = i / (numHearts - 1);
                 const x = startX + dx * progress;
                 const y = startY + dy * progress;
-                
+
+                // Случайное смещение от линии для органичности
+                const offsetX = (Math.random() - 0.5) * 30;
+                const offsetY = (Math.random() - 0.5) * 20;
+
                 const heart = document.createElement('div');
                 heart.className = 'trail-heart';
                 heart.textContent = heartSymbols[Math.floor(Math.random() * heartSymbols.length)];
-                heart.style.left = x + 'px';
-                heart.style.top = y + 'px';
-                heart.style.fontSize = (Math.random() * 4 + 12) + 'px';
-                
-                heartsContainer.appendChild(heart);
-                
-                // Remove heart after animation
+                heart.style.left = (x + offsetX) + 'px';
+                heart.style.top = (y + offsetY) + 'px';
+                heart.style.fontSize = (Math.random() * 8 + 12) + 'px';
+
+                // Уникальные CSS-переменные для каждого сердечка
+                const driftX = (Math.random() - 0.5) * 60;
+                const driftX2 = driftX + (Math.random() - 0.5) * 40;
+                const spin = (Math.random() - 0.5) * 90;
+                const spinEnd = spin + (Math.random() - 0.5) * 180;
+
+                heart.style.setProperty('--drift-x', driftX + 'px');
+                heart.style.setProperty('--drift-x2', driftX2 + 'px');
+                heart.style.setProperty('--spin', spin + 'deg');
+                heart.style.setProperty('--spin-end', spinEnd + 'deg');
+
+                // Задержка для каскадного появления
+                heart.style.animationDelay = (i * 0.04) + 's';
+
+                document.body.appendChild(heart);
+
                 setTimeout(() => {
                     heart.remove();
-                }, 800);
+                }, 1800);
             }
         }
 
@@ -358,23 +460,26 @@
             const heartsContainer = document.getElementById('heartsContainer');
             const celebrationText = document.getElementById('celebrationText');
             const container = document.querySelector('.container');
-            
-            // Fade out and hide all container elements (GIF, text, buttons)
+
             container.classList.add('fade-out');
             setTimeout(() => {
                 container.classList.add('hidden');
             }, 500);
-            
-            // Show celebration text
+
+            // Скрыть кнопку "Нет"
+            const noBtn = document.getElementById('noBtn');
+            if (noBtn) {
+                noBtn.style.transition = 'opacity 0.5s ease';
+                noBtn.style.opacity = '0';
+                setTimeout(() => { noBtn.style.display = 'none'; }, 500);
+            }
+
             celebrationText.classList.add('show');
-            
-            // Create falling hearts
+
             createHearts();
-            
-            // Continue creating hearts periodically
+
             const heartInterval = setInterval(createHearts, 1000);
-            
-            // Stop after 10 seconds
+
             setTimeout(() => {
                 clearInterval(heartInterval);
             }, 10000);
@@ -384,7 +489,7 @@
             const heartsContainer = document.getElementById('heartsContainer');
             const heartSymbols = ['❤️', '💖', '💕', '💗', '💓', '💝'];
             const colors = ['#FF69B4', '#FFB6C1', '#FF1493', '#FFC0CB', '#FF6B9D'];
-            
+
             for (let i = 0; i < 20; i++) {
                 setTimeout(() => {
                     const heart = document.createElement('div');
@@ -395,10 +500,9 @@
                     heart.style.color = colors[Math.floor(Math.random() * colors.length)];
                     heart.style.animationDuration = (Math.random() * 3 + 2) + 's';
                     heart.style.animationDelay = (Math.random() * 2) + 's';
-                    
+
                     heartsContainer.appendChild(heart);
-                    
-                    // Remove heart after animation
+
                     setTimeout(() => {
                         heart.remove();
                     }, 5000);
